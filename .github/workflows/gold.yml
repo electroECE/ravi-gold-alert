@@ -8,33 +8,33 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: ravi-gold-alert
-  cancel-in-progress: true
-
 jobs:
   check-gold:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install requests beautifulsoup4
+      - name: Install Packages
+        run: |
+          pip install requests beautifulsoup4
 
-      - name: Run bot
+      - name: Run Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python bot.py
 
-      - name: Save rate
+      - name: Save Rate
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add rate.json
-          git commit -m "update rate" || echo "No rate change"
+          git commit -m "update rate" || echo "No changes"
           git push
