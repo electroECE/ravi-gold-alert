@@ -10,52 +10,49 @@ CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 SITE_URL = "https://ravijewellers.lk/"
 STATE_FILE = "rate.json"
 
-def send_msg(text):
-    r = requests.post(
+def send_message(message):
+    requests.post(
         f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-        data={"chat_id": CHAT_ID, "text": text},
+        data={"chat_id": CHAT_ID, "text": message},
         timeout=30
-    )
-    print("Telegram:", r.status_code, r.text)
-    r.raise_for_status()
+    ).raise_for_status()
 
-html = requests.get(
-    SITE_URL,
-    headers={"User-Agent": "Mozilla/5.0"},
-    timeout=30
-).text
-
-soup = BeautifulSoup(html, "html.parser")
-text = soup.get_text(" ", strip=True)
-
-print(text[:1500])
+html = requests.get(SITE_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=30).text
+text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
 
 matches = re.findall(r"22\s*KT\s*LKR\s*([0-9,]+)", text, re.I)
 
 if not matches:
-    send_msg("⚠️ Ravi Gold Alert error: could not find 22KT rate on website.")
-    raise Exception("Could not find 22KT rate")
+    send_message("⚠️ Ravi Gold Alert: Cannot find 22KT rate.")
+    raise Exception("22KT rate not found")
 
-# Ravi page contains old rates also, so take the last/current one
-rate = matches[-1]
+current_rate = matches[-1]
 
 try:
     with open(STATE_FILE, "r") as f:
-        old = json.load(f).get("rate", "")
+        old_rate = json.load(f).get("rate", "")
 except:
-    old = ""
+    old_rate = ""
 
-if old == "":
-    send_msg(f"✅ Ravi Gold Alert started\nCurrent 22KT: LKR {rate}")
-elif rate != old:
-    send_msg(
+if old_rate and current_rate != old_rate:
+    old_num = int(old_rate.replace(",", ""))
+    new_num = int(current_rate.replace(",", ""))
+
+    if new_num > old_num:
+        change = f"Increased 📈 by LKR {new_num - old_num:,}"
+    else:
+        change = f"Decreased 📉 by LKR {old_num - new_num:,}"
+
+    send_message(
         f"🔔 Ravi Jewellers Gold Rate Changed\n\n"
-        f"Old 22KT: LKR {old}\n"
-        f"New 22KT: LKR {rate}\n"
+        f"Old 22KT: LKR {old_rate}\n"
+        f"New 22KT: LKR {current_rate}\n"
+        f"{change}\n\n"
         f"{SITE_URL}"
     )
-else:
-    print(f"No change. Current 22KT: LKR {rate}")
+
+elif not old_rate:
+    send_message(f"✅ Ravi Gold Alert started\nCurrent 22KT: LKR {current_rate}")
 
 with open(STATE_FILE, "w") as f:
-    json.dump({"rate": rate}, f)
+    json.dump({"rate": current_rate}, f)
