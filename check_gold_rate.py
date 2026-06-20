@@ -11,19 +11,31 @@ SITE_URL = "https://ravijewellers.lk/"
 STATE_FILE = "rate.json"
 
 def send_message(message):
-    requests.post(
+    r = requests.post(
         f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
         data={"chat_id": CHAT_ID, "text": message},
         timeout=30
-    ).raise_for_status()
+    )
+    print("Telegram:", r.status_code, r.text)
+    r.raise_for_status()
 
-html = requests.get(SITE_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=30).text
+html = requests.get(
+    SITE_URL,
+    headers={"User-Agent": "Mozilla/5.0"},
+    timeout=30
+).text
+
 text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+
+print(text[:2000])
 
 matches = re.findall(r"22\s*KT\s*LKR\s*([0-9,]+)", text, re.I)
 
 if not matches:
-    send_message("⚠️ Ravi Gold Alert: Cannot find 22KT rate.")
+    matches = re.findall(r"22KT\s+LKR\s+([0-9,]+)", text, re.I)
+
+if not matches:
+    send_message("⚠️ Ravi Gold Alert: Cannot find 22KT rate. Website text changed.")
     raise Exception("22KT rate not found")
 
 current_rate = matches[-1]
